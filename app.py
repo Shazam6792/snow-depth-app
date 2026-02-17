@@ -7,7 +7,7 @@ import requests
 from datetime import datetime
 
 st.set_page_config(page_title="Les Menuires Snow", page_icon="❄️")
-st.title("❄️ Les Menuires Snow Report")
+st.title("❄️ Tim's Les Menuires Snow Report")
 
 def get_snow_depth():
     # GPS Coordinates for Les Menuires
