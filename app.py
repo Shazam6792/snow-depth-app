@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 
-st.set_page_config(page_title="Les Menuires Snow Hub", page_icon="❄️")
+st.set_page_config(page_title="Tim's Les Menuires Snow Hub", page_icon="❄️")
 
 # Mapping weather codes to emojis
 WEATHER_MAP = {
