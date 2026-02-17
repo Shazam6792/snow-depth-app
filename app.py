@@ -1,67 +1,58 @@
 import streamlit as st
 import requests
 import pandas as pd
-from datetime import datetime
 
-st.set_page_config(page_title="Les Menuires Snow Hub", page_icon="❄️", layout="wide")
+st.set_page_config(page_title="Les Menuires Snow Hub", page_icon="❄️")
 
-# Weather code mapping (WMO standards)
-WEATHER_CODES = {
-    0: "☀️ Clear sky", 1: "🌤️ Mainly clear", 2: "⛅ Partly cloudy", 3: "☁️ Overcast",
-    71: "❄️ Slight snowfall", 73: "❄️ Moderate snowfall", 75: "❄️ Heavy snowfall",
-    77: "🌨️ Snow grains", 85: "❄️ Slight snow showers", 86: "❄️ Heavy snow showers"
+# Mapping weather codes to emojis
+WEATHER_MAP = {
+    0: "☀️ Clear", 1: "🌤️ Mostly Clear", 2: "⛅ Partly Cloudy", 3: "☁️ Overcast",
+    71: "❄️ Light Snow", 73: "❄️ Snow", 75: "❄️ Heavy Snow", 85: "🌨️ Snow Showers"
 }
 
-def get_resort_data():
-    lat, lon = 45.32, 6.54
-    # Fetching both current and 7-day daily forecast
-    url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,snowfall,weather_code&daily=temperature_2m_max,temperature_2m_min,snowfall_sum,weather_code&timezone=Europe%2FBerlin"
-    
+def get_mountain_data():
+    # Pointe de la Masse coordinates (High point of Les Menuires)
+    url = "https://api.open-meteo.com/v1/forecast?latitude=45.32&longitude=6.54&current=temperature_2m,snowfall,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,snowfall_sum&timezone=Europe%2FBerlin"
     try:
-        response = requests.get(url)
-        data = response.json()
-        return data
-    except Exception as e:
+        r = requests.get(url)
+        return r.json()
+    except:
         return None
 
-st.title("🏔️ Les Menuires Snow & Forecast")
+st.title("🏔️ Les Menuires Snow Hub")
 
-data = get_resort_data()
+data = get_mountain_data()
 
 if data:
-    # --- TOP ROW: CURRENT CONDITIONS ---
+    # --- SECTION 1: NOW ---
     curr = data['current']
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     
     with col1:
         st.metric("Current Temp", f"{curr['temperature_2m']}°C")
     with col2:
-        condition = WEATHER_CODES.get(curr['weather_code'], "☁️ Cloudy")
-        st.metric("Condition", condition)
-    with col3:
-        st.metric("Recent Snow", f"{curr['snowfall']} cm")
+        condition = WEATHER_MAP.get(curr['weather_code'], "☁️ Cloudy")
+        st.metric("Status", condition)
 
-    st.divider()
+    # --- SECTION 2: POWDER ALERT ---
+    tomorrow_snow = data['daily']['snowfall_sum'][1]
+    if tomorrow_snow > 10:
+        st.info(f"🚨 **POWDER ALERT:** {tomorrow_snow}cm of fresh snow expected tomorrow!")
+    elif tomorrow_snow > 2:
+        st.success(f"❄️ {tomorrow_snow}cm of fresh snow expected tomorrow.")
 
-    # --- BOTTOM ROW: 7-DAY FORECAST ---
-    st.subheader("📅 7-Day Mountain Forecast")
-    
-    daily = data['daily']
-    forecast_df = pd.DataFrame({
-        "Date": daily['time'],
-        "Max Temp": [f"{t}°C" for t in daily['temperature_2m_max']],
-        "Min Temp": [f"{t}°C" for t in daily['temperature_2m_min']],
-        "New Snow": [f"{s} cm" for s in daily['snowfall_sum']],
-        "Conditions": [WEATHER_CODES.get(code, "☁️ Cloudy") for code in daily['weather_code']]
+    # --- SECTION 3: 7-DAY FORECAST ---
+    st.write("### 📅 7-Day Forecast")
+    df = pd.DataFrame({
+        "Day": data['daily']['time'],
+        "Condition": [WEATHER_MAP.get(c, "☁️") for c in data['daily']['weather_code']],
+        "Max": [f"{t}°C" for t in data['daily']['temperature_2m_max']],
+        "New Snow": [f"{s}cm" for s in data['daily']['snowfall_sum']]
     })
-    
-    # Display the table
-    st.table(forecast_df)
-    
-    st.caption(f"Elevation: {data.get('elevation', '1850')}m | Data via Open-Meteo")
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
 else:
-    st.error("Could not fetch the latest mountain data. Please try again in a moment.")
+    st.error("Mountain sensors are offline. Try again in a minute!")
 
-if st.button('🔄 Refresh Dashboard'):
+if st.button('🔄 Refresh Data'):
     st.rerun()
