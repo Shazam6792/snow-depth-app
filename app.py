@@ -19,7 +19,7 @@ def get_mountain_data():
     except:
         return None
 
-st.title("🏔️ Les Menuires Snow Hub")
+st.title("🏔️ Tim's Les Menuires Snow Hub")
 
 data = get_mountain_data()
 
