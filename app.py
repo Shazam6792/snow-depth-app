@@ -13,7 +13,8 @@ WEATHER_MAP = {
 
 def get_mountain_data():
     # Pointe de la Masse coordinates
-    url = "https://api.open-meteo.com/v1/forecast?latitude=45.32&longitude=6.54&current=temperature_2m,snowfall,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,snowfall_sum&hourly=temperature_2m&timezone=Europe%2FBerlin"
+    # We added 'snow_depth' to the hourly request
+    url = "https://api.open-meteo.com/v1/forecast?latitude=45.32&longitude=6.54&current=temperature_2m,snowfall,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,snowfall_sum&hourly=temperature_2m,snow_depth&timezone=Europe%2FBerlin"
     try:
         r = requests.get(url)
         return r.json()
@@ -27,21 +28,21 @@ data = get_mountain_data()
 if data:
     # --- SECTION 1: TOP METRICS ---
     curr = data['current']
-    today_min = data['daily']['temperature_2m_min'][0]
-    today_max = data['daily']['temperature_2m_max'][0]
+    
+    # Get the very latest snow depth from the hourly list (converted from meters to cm)
+    current_depth_cm = data['hourly']['snow_depth'][0] * 100 
     
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Current Temp", f"{curr['temperature_2m']}°C")
+        st.metric("Snow Depth", f"{int(current_depth_cm)} cm")
     with col2:
-        st.metric("Today's Range", f"{today_min}°C / {today_max}°C")
+        st.metric("Current Temp", f"{curr['temperature_2m']}°C")
     with col3:
         condition = WEATHER_MAP.get(curr['weather_code'], "☁️ Cloudy")
         st.metric("Status", condition)
 
-    # --- SECTION 2: 24-HOUR TREND CHART ---
+    # --- SECTION 2: 24-HOUR TREND ---
     st.write("### 📈 24-Hour Temperature Trend")
-    # We take the first 24 hours of the hourly data
     hourly_times = [datetime.fromisoformat(t).strftime("%H:%M") for t in data['hourly']['time'][:24]]
     hourly_temps = data['hourly']['temperature_2m'][:24]
     
@@ -52,14 +53,14 @@ if data:
     
     st.line_chart(chart_data)
 
-    # --- SECTION 3: 7-DAY TABLE ---
+    # --- SECTION 3: 7-DAY FORECAST ---
     st.write("### 📅 7-Day Forecast")
     df = pd.DataFrame({
         "Day": data['daily']['time'],
         "Condition": [WEATHER_MAP.get(c, "☁️") for c in data['daily']['weather_code']],
         "Min": [f"{t}°C" for t in data['daily']['temperature_2m_min']],
         "Max": [f"{t}°C" for t in data['daily']['temperature_2m_max']],
-        "Snowfall": [f"{s}cm" for s in data['daily']['snowfall_sum']]
+        "New Snow": [f"{s}cm" for s in data['daily']['snowfall_sum']]
     })
     st.dataframe(df, use_container_width=True, hide_index=True)
 
